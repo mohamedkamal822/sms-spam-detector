@@ -15,6 +15,25 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Force the sidebar collapse button to always be visible
+st.markdown("""
+<style>
+[data-testid="collapsedControl"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: #13161f !important;
+    border: 1px solid #1e2130 !important;
+    border-radius: 50% !important;
+    color: #a78bfa !important;
+}
+[data-testid="collapsedControl"]:hover {
+    background: #1e2130 !important;
+    border-color: #a78bfa !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── Custom CSS ────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -621,52 +640,58 @@ elif page == '📊 Model Metrics':
     with col_rep:
         st.markdown('<div class="section-title">Classification Report</div>',
                     unsafe_allow_html=True)
+
+        # Build a clean DataFrame for the report
+        rows_rep = []
+        for cls in ['Ham', 'Spam']:
+            r = rep[cls]
+            rows_rep.append({
+                'Class':     cls,
+                'Precision': round(r['precision'], 3),
+                'Recall':    round(r['recall'],    3),
+                'F1-Score':  round(r['f1-score'],  3),
+                'Support':   int(r['support']),
+            })
+        for avg in ['macro avg', 'weighted avg']:
+            r = rep[avg]
+            rows_rep.append({
+                'Class':     avg.title(),
+                'Precision': round(r['precision'], 3),
+                'Recall':    round(r['recall'],    3),
+                'F1-Score':  round(r['f1-score'],  3),
+                'Support':   int(r['support']),
+            })
+
+        df_rep = pd.DataFrame(rows_rep).set_index('Class')
+
+        def highlight_class(row):
+            if row.name == 'Ham':
+                return ['color: #22c55e; font-weight:600'] + [''] * (len(row) - 1)
+            elif row.name == 'Spam':
+                return ['color: #ef4444; font-weight:600'] + [''] * (len(row) - 1)
+            return ['color: #9ca3af'] * len(row)
+
+        st.dataframe(
+            df_rep.style.apply(highlight_class, axis=1).format({
+                'Precision': '{:.3f}',
+                'Recall':    '{:.3f}',
+                'F1-Score':  '{:.3f}',
+                'Support':   '{:.0f}',
+            }),
+            use_container_width=True,
+        )
+
+        # Per-class metric cards
+        st.markdown('#### Ham vs Spam — Key Metrics')
         for cls in ['Ham', 'Spam']:
             r = rep[cls]
             color = '#22c55e' if cls == 'Ham' else '#ef4444'
-            st.markdown(f"""
-            <div style='background:#13161f;border:1px solid #1e2130;
-                        border-left:3px solid {color};border-radius:10px;
-                        padding:1rem 1.3rem;margin-bottom:0.8rem'>
-                <div style='font-family:Space Mono,monospace;font-size:0.85rem;
-                             color:{color};font-weight:700;margin-bottom:0.6rem'>
-                    {cls.upper()}
-                </div>
-                <div style='display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0.5rem'>
-                    {''.join(f"""
-                    <div style='text-align:center'>
-                        <div style='font-size:1.1rem;font-weight:600;
-                                    font-family:Space Mono,monospace;color:#e8eaf0'>
-                            {r[k]:.2f}
-                        </div>
-                        <div style='font-size:0.7rem;color:#6b7280;
-                                    text-transform:uppercase;letter-spacing:0.05em'>
-                            {k.replace('-score','').replace('f1','F1')}
-                        </div>
-                    </div>
-                    """ for k in ['precision','recall','f1-score','support'])}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-        # Macro / weighted
-        for avg in ['macro avg', 'weighted avg']:
-            r = rep[avg]
-            st.markdown(f"""
-            <div style='background:#0d0f14;border:1px solid #1e2130;border-radius:8px;
-                        padding:0.7rem 1.3rem;margin-bottom:0.5rem;
-                        display:flex;align-items:center;gap:1rem'>
-                <span style='font-size:0.78rem;color:#6b7280;
-                              font-family:Space Mono,monospace;min-width:100px'>
-                    {avg.upper()}
-                </span>
-                <span style='font-size:0.85rem;color:#9ca3af'>
-                    P: <b style='color:#e8eaf0'>{r['precision']:.3f}</b> &nbsp;
-                    R: <b style='color:#e8eaf0'>{r['recall']:.3f}</b> &nbsp;
-                    F1: <b style='color:#e8eaf0'>{r['f1-score']:.3f}</b>
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
+            icon  = '✅' if cls == 'Ham' else '🚨'
+            c1, c2, c3 = st.columns(3)
+            st.markdown(f"**{icon} {cls}**")
+            c1.metric('Precision', f"{r['precision']:.1%}")
+            c2.metric('Recall',    f"{r['recall']:.1%}")
+            c3.metric('F1-Score',  f"{r['f1-score']:.1%}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
