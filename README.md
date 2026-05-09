@@ -166,9 +166,3 @@ sms-spam-detector/
 
 ---
 
-## 👨‍💻 Author
-
-**Mohamed Kamal Rashed**  
-Computer Science Student · AI Major  
-Faculty of Computers and Artificial Intelligence, Banha University  
-DEPI Data Analytics & BI Program Graduate
